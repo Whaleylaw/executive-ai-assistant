@@ -9,6 +9,11 @@ from langgraph.store.base import BaseStore
 from typing import TypedDict, Literal, Union, Optional
 from langgraph_sdk import get_client
 from eaia.main.config import get_config
+from eaia.gmail import (
+    send_email,
+    mark_as_read,
+    send_calendar_invite,
+)
 
 LGC = get_client()
 
@@ -277,20 +282,26 @@ async def notify(state: State, config, store):
             }
             await LGC.runs.create(None, "multi_reflection_graph", input=rewrite_state)
     elif response["type"] == "ignore":
+        # Create a single tool call that will be used for both the graph flow and LangSmith tracking
+        tool_call_id = str(uuid.uuid4())
         msg = {
             "role": "assistant",
-            "content": "",
-            "id": str(uuid.uuid4()),
+            "content": "Email marked as read",
             "tool_calls": [
                 {
-                    "id": "foo",
+                    "id": tool_call_id,
                     "name": "Ignore",
                     "args": {"ignore": True},
                 }
             ],
         }
+        
         if memory:
             await save_email(state, config, store, "no")
+            # Update the current state instead of creating a new one
+            state["messages"].append(msg)
+        
+        return {"messages": [msg]}
     else:
         raise ValueError(f"Unexpected response: {response}")
 

@@ -30,6 +30,7 @@ _PORT = 54191
 _SECRETS_DIR = _ROOT / ".secrets"
 _SECRETS_PATH = str(_SECRETS_DIR / "secrets.json")
 _TOKEN_PATH = str(_SECRETS_DIR / "token.json")
+_CLIENT_SECRETS_PATH = str(_SECRETS_DIR / "client_secret_715542902804-4r76n3puehfg5qddrsbu7bpiv3spouav.apps.googleusercontent.com.json")
 
 
 def get_credentials(
@@ -37,15 +38,26 @@ def get_credentials(
 ) -> Credentials:
     creds = None
     _SECRETS_DIR.mkdir(parents=True, exist_ok=True)
-    gmail_token = gmail_token or os.getenv("GMAIL_TOKEN")
-    if gmail_token:
-        with open(_TOKEN_PATH, "w") as token:
-            token.write(gmail_token)
-    gmail_secret = gmail_secret or os.getenv("GMAIL_SECRET")
-    if gmail_secret:
-        with open(_SECRETS_PATH, "w") as secret:
-            secret.write(gmail_secret)
-    if os.path.exists(_TOKEN_PATH):
+    
+    # Check if we need to copy from the client secrets file
+    if os.path.exists(_CLIENT_SECRETS_PATH):
+        logger.info(f"Found client secrets file at {_CLIENT_SECRETS_PATH}")
+        try:
+            with open(_CLIENT_SECRETS_PATH, 'r') as source:
+                client_secret_content = source.read()
+                if client_secret_content.strip():
+                    with open(_SECRETS_PATH, 'w') as target:
+                        target.write(client_secret_content)
+                    logger.info(f"Successfully copied client secrets to {_SECRETS_PATH}")
+        except Exception as e:
+            logger.error(f"Error copying client secrets: {e}")
+            raise ValueError(f"Error copying client secrets: {e}")
+    else:
+        logger.error(f"Client secrets file not found at {_CLIENT_SECRETS_PATH}")
+        raise ValueError(f"Client secrets file not found at {_CLIENT_SECRETS_PATH}")
+            
+    # Try to load existing credentials
+    if os.path.exists(_TOKEN_PATH) and os.path.getsize(_TOKEN_PATH) > 0:
         creds = Credentials.from_authorized_user_file(_TOKEN_PATH)
 
     if not creds or not creds.valid or not creds.has_scopes(_SCOPES):
@@ -57,8 +69,11 @@ def get_credentials(
         ):
             creds.refresh(Request())
         else:
+            if not os.path.exists(_SECRETS_PATH) or os.path.getsize(_SECRETS_PATH) == 0:
+                raise ValueError("No secrets.json file found or file is empty. Please ensure the client secrets file is in the .secrets directory.")
             flow = InstalledAppFlow.from_client_secrets_file(_SECRETS_PATH, _SCOPES)
             creds = flow.run_local_server(port=_PORT)
+        # Only write token if we successfully got new credentials
         with open(_TOKEN_PATH, "w") as token:
             token.write(creds.to_json())
 
@@ -176,7 +191,8 @@ def fetch_group_emails(
     service = build("gmail", "v1", credentials=creds)
     after = int((datetime.now() - timedelta(minutes=minutes_since)).timestamp())
 
-    query = f"(to:{to_email} OR from:{to_email}) after:{after}"
+    # Add label:unread to the query to only fetch unread emails
+    query = f"(to:{to_email} OR from:{to_email}) after:{after} label:unread"
     messages = []
     nextPageToken = None
     # Fetch messages matching the query

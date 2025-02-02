@@ -1,52 +1,51 @@
-email: ...
-full_name: Harrison Chase
-name: Harrison
-background: Harrison is CEO and co-founder of LangChain. LangChain is a startup building tools for developers to build LLM applications.
-schedule_preferences: By default, unless specified otherwise, you should make meetings 30 minutes long.
+email: "agwhaley@whaleylawfirm.com"
+full_name: "Aaron Whaley"
+name: "Aaron"
+background: >
+  Aaron is the owner of and lawyer for the Whaley Law Firm. The Whaley Law Firm is a personal injury firm which handles primarily car accidents, slip and falls, and workers compensation.
+timezone: "America/New_York"
+schedule_preferences: >-
+  By default, unless specified otherwise, you should make meetings 30 minutes long.
 background_preferences: |
-  LangChain has a product marketer - Linda. For emails where she may be relevant, please loop her in. If possible, just add her to the thread and let her handle any asks (not Harrison). Examples include: being asked to amplify a podcast, blogpost, or other work featuring Harrison or LangChain
+  Whaley Law Firm has several employees that will be either receiving mail from or forwarding mail to.  Bryce Koon is an associate attorney. Emails that involve litigation, or cases that have already been filed in a court will be forwraded to Bryce. His email address is bryce@whaleylawfirm.com. Bryce also handles all workers compensation cases. Sarena Tuttle is the firm paralegal. She assists Bryce on all litigation and workers compensation cases and so she should be cc'd on any emails that involve litigation or workers compensation. Her email address is sarena@whaleylawfirm.com. Justin Chumbley is the head case manager and he handles all cases(except workers comp) that are not in litigation. His email address is justin@whaleylawfirm.com and all emails asking about cases or clients should be forwarded to him. Faye Gaither is in charge of client relations and she handles all emails from clients. Her email address is faye@whaleylawfirm.com. Additionally, any voicemails regarding the relevant topics should be forwarded accordingly.  
 response_preferences:
-timezone: "PST"
 rewrite_preferences: |
-  Harrison has a few rules for how he likes his emails to be written:
+  Aaron has a few rules for how he likes his emails to be written:
 
   - He generally likes to match their tone. If they write formally, then so will he. If they write casually, then he should write casual
   - If working with an assistant to schedule, then he is usually more formal
   - If conversing with someone he seems to know well, then he is more direct and to the fact
-  - Harrison REALLY does not want anyone to know he is using an assistant, so you should try not to sound too much like an assistant and rather sound like Harrison
-  - When Harrison is casual, he generally does not include any greetings or sign offs, and just directly says his message
+  - Aaron REALLY does not want anyone to know he is using an assistant, so you should try not to sound too much like an assistant and rather sound like Aaron
+  - When Aaron is casual, he generally does not include any greetings or sign offs, and just directly says his message
 
 triage_no: |
-  - Automated emails from services that are spamming Harrison
-  - Cold outreach from vendors - this happens a lot as people try to sell Harrison things. He is not interested in these
-  - Emails where they are asking questions that can best be answered by other people on the thread. \
-  Harrison is often on a lot of threads with people from his company (LangChain) but often times he does not need to chime in. \
-  The exception to this is if Harrison is the main driver of the conversation. \
-  You can usually tell this by whether Harrison was the one who sent the last email
-  - Generally do not need to see emails from Ramp, Rewatch, Stripe
-  - Notifications of comments on Google Docs
-  - Automated calendar invitations
-triage_notify: |
-  - Google docs that were shared with him (do NOT notify him on comments, just net new ones)
-  - Docusign things that needs to sign. These are using from Docusign and start with "Complete with Docusign". \
-  Note: if the Docusign is already signed, you do NOT need to notify him. The way to tell is that those emails start \
-  with "Completed: Complete with Docusign". Note the "Completed". Do not notify him if "Completed", only if still needs to be completed.
-  - Anything that is pretty technically detailed about LangChain. Harrison sometimes gets asked questions about LangChain, \
-  while he may not always respond to those he likes getting notified about them
-  - Emails where there is a clear action item from Harrison based on a previous conversation, like adding people to a slack channel
-triage_email: |
-  - Emails from clients that explicitly ask Harrison a question
-  - Emails from clients where someone else has scheduled a meeting for Harrison, and Harrison has not already chimed in to express his excitement
-  - Emails from clients or potential customers where Harrison is the main driver of the conversation
-  - Emails from other LangChain team members that explicitly ask Harrison a question
-  - Emails where Harrison has gotten added to a thread with a customer and he hasn't yet said hello
-  - Emails where Harrison is introducing two people to each other. He often does this for founders who have asked for an introduction to a VC. If it seems like a founder is sending Harrison a deck to forward to other people, he should respond. If Harrison has already introduced the two parties, he should not respond unless they explicitly ask him a question.
-  - Email from clients where they are trying to set up a time to meet
-  - Any direct emails from Harrison's lawyers (Goodwin Law)
-  - Any direct emails related to the LangChain board
-  - Emails where LangChain is winning an award/being invited to a legitimate event
-  - Emails where it seems like Harrison has a pre-existing relationship with the sender. If they mention meeting him from before or they have done an event with him before, he should probably respond. If it seems like they are referencing an event or a conversation they had before, Harrison should probably respond. 
-  - Emails from friends - even these don't ask an explicit question, if it seems like something a good friend would respond to, Harrison should do so.
+  -= Automatic notifications of payments made
+  - Any email that has the option to unsubscribe
+  - Anything that looks like they are trying to sell me something
+  - Automated emails from services that are spamming Aaron
+  - Cold outreach from vendors - this happens a lot as people try to sell Aaron things. He is not interested in these
+  - Spam email
 
-  Reminder - automated calendar invites do NOT count as real emails
+triage_notify: |
+  - notifications of court filings
+  - Emails from Blazeo Voice
+  - voicemails, texts or faxes from Ring Central
+  - Google docs that were shared with him (do NOT notify him on comments, just net new ones)
+  - Anything that is pretty technically detailed about Whaley Law Firm. Aaron sometimes gets asked questions about Whaley Law Firm, \
+  while he may not always respond to those he likes getting notified about them
+  - Emails where there is a clear action item from Aaron based on a previous conversation
+  - Emails about new clients that have been signed or if they have questions.
+
+triage_email: |
+  -  Emails from clients 
+  - Emails from other Whaley Law Firm team members Justin@whaleylawfirm.com, Faye@whaleylawfirm.com, Bryce@whaleylawfirm.com, Sarena@whaleylawfirm.com, Jessa@whaleylawfirm.com, Aries@whaleylawfirm.com, or Jessica@whaleylawfirm.com 
+  - Emails where Aaron has gotten added to a thread and he hasn't yet said hello
+  - Emails where it seems like Aaron has a pre-existing relationship with the sender. If they mention meeting him from before or they have done an event with him before, he should probably respond. If it seems like they are referencing an event or a conversation they had before, Aaron should probably respond. 
+  - Emails from friends - even these don't ask an explicit question, if it seems like something a good friend would respond to, Aaron should do so.
+  - Emails from other attorneys 
+  - Emails about specific clients that are represented by the Whaley Law Firm
+
+  
 memory: true
+
+

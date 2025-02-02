@@ -25,6 +25,7 @@ from eaia.gmail import (
 from eaia.schemas import (
     State,
 )
+import uuid
 
 
 def route_after_triage(
@@ -147,6 +148,14 @@ def send_email_node(state, config):
 
 def mark_as_read_node(state):
     mark_as_read(state["email"]["id"])
+    return {
+        "messages": [
+            ToolMessage(
+                content="Email marked as read",
+                tool_call_id=state["messages"][-1].tool_calls[0]["id"] if state.get("messages") else str(uuid.uuid4())
+            )
+        ]
+    }
 
 
 def human_node(state: State):
