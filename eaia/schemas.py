@@ -1,4 +1,6 @@
-from typing import Annotated, List, Literal
+"""Schema definitions for the Executive AI Assistant."""
+
+from typing import Dict, List, Any, TypedDict, Optional, Union, Literal
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langgraph.graph.message import AnyMessage
 from typing_extensions import TypedDict
@@ -8,13 +10,31 @@ from langgraph.graph import add_messages
 
 
 class EmailData(TypedDict):
+    """Schema for email data."""
     id: str
-    thread_id: str
+    to_email: str
     from_email: str
     subject: str
     page_content: str
-    send_time: str
-    to_email: str
+    date: str
+    metadata: Optional[Dict[str, Any]]
+
+
+class Message(TypedDict):
+    """Message schema."""
+    role: str
+    content: str
+    id: Optional[str]
+    tool_calls: Optional[List[Dict[str, Any]]]
+
+
+class State(TypedDict):
+    """State schema for the graph."""
+    email: EmailData
+    messages: List[Any]
+    triage: Optional[str]
+    feedback: Optional[str]
+    prompt_types: Optional[List[str]]
 
 
 class RespondTo(BaseModel):
@@ -88,14 +108,11 @@ def convert_obj(o, m):
         return m
 
 
-class State(TypedDict):
-    email: EmailData
-    triage: Annotated[RespondTo, convert_obj]
-    messages: Annotated[List[AnyMessage], add_messages]
+email_template = """
+Email Thread:
+{email_thread}
 
-
-email_template = """From: {author}
-To: {to}
+From: {author}
 Subject: {subject}
-
-{email_thread}"""
+To: {to}
+"""
