@@ -71,14 +71,56 @@ async def save_email(state: State, config, store: BaseStore, status: str):
         await store.aput(namespace, str(uuid.uuid4()), data)
 
 
+def _safely_prepare_messages_for_conversion(messages):
+    """
+    Prepare messages for conversion to langchain format, ensuring dictionary access is used for dictionaries.
+    """
+    prepared_messages = []
+    for msg in messages:
+        if isinstance(msg, dict):
+            # Make a copy to avoid modifying the original
+            prepared_msg = msg.copy()
+            
+            # Ensure tool_calls is properly formatted as a list if it exists
+            if "tool_calls" in prepared_msg and prepared_msg["tool_calls"]:
+                if not isinstance(prepared_msg["tool_calls"], list):
+                    prepared_msg["tool_calls"] = [prepared_msg["tool_calls"]]
+            
+            prepared_messages.append(prepared_msg)
+        else:
+            # It's an object, so we can append it directly
+            prepared_messages.append(msg)
+    
+    return prepared_messages
+
+
 @traceable
 async def send_message(state: State, config, store):
     prompt_config = get_config(config)
     memory = prompt_config["memory"]
     user = prompt_config['name']
-    tool_call = state["messages"][-1].tool_calls[0]
+    
+    # Check if messages[-1] is a dict or an object and access tool_calls accordingly
+    last_message = state["messages"][-1]
+    
+    # Handle both dictionary and object cases
+    if isinstance(last_message, dict):
+        tool_call = last_message.get("tool_calls", [{}])[0]
+        tool_call_id = tool_call.get("id", "")
+        tool_call_name = tool_call.get("name", "")
+        tool_call_args = tool_call.get("args", {})
+        msg_id = last_message.get("id", "")
+    else:
+        # Object-style access
+        tool_calls = getattr(last_message, "tool_calls", [{}])
+        tool_call = tool_calls[0] if tool_calls else {}
+        tool_call_id = tool_call.get("id", "")
+        tool_call_name = tool_call.get("name", "")
+        tool_call_args = tool_call.get("args", {})
+        msg_id = getattr(last_message, "id", "")
+    
     request: HumanInterrupt = {
-        "action_request": {"action": tool_call["name"], "args": tool_call["args"]},
+        "action_request": {"action": tool_call_name, "args": tool_call_args},
         "config": {
             "allow_ignore": True,
             "allow_respond": True,
@@ -97,16 +139,18 @@ async def send_message(state: State, config, store):
     if response["type"] == "response":
         msg = {
             "type": "tool",
-            "name": tool_call["name"],
+            "name": tool_call_name,
             "content": response["args"],
-            "tool_call_id": tool_call["id"],
+            "tool_call_id": tool_call_id,
         }
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"] + [msg])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"] + [msg]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
@@ -127,10 +171,10 @@ async def send_message(state: State, config, store):
         msg = {
             "role": "assistant",
             "content": "",
-            "id": state["messages"][-1].id,
+            "id": msg_id,
             "tool_calls": [
                 {
-                    "id": tool_call["id"],
+                    "id": tool_call_id,
                     "name": "Ignore",
                     "args": {"ignore": True},
                 }
@@ -149,9 +193,30 @@ async def send_email_draft(state: State, config, store):
     prompt_config = get_config(config)
     memory = prompt_config["memory"]
     user = prompt_config['name']
-    tool_call = state["messages"][-1].tool_calls[0]
+    
+    # Check if messages[-1] is a dict or an object and access tool_calls accordingly
+    last_message = state["messages"][-1]
+    
+    # Handle both dictionary and object cases
+    if isinstance(last_message, dict):
+        tool_call = last_message.get("tool_calls", [{}])[0]
+        tool_call_id = tool_call.get("id", "")
+        tool_call_name = tool_call.get("name", "")
+        tool_call_args = tool_call.get("args", {})
+        msg_id = last_message.get("id", "")
+        msg_content = last_message.get("content", "")
+    else:
+        # Object-style access
+        tool_calls = getattr(last_message, "tool_calls", [{}])
+        tool_call = tool_calls[0] if tool_calls else {}
+        tool_call_id = tool_call.get("id", "")
+        tool_call_name = tool_call.get("name", "")
+        tool_call_args = tool_call.get("args", {})
+        msg_id = getattr(last_message, "id", "")
+        msg_content = getattr(last_message, "content", "")
+    
     request: HumanInterrupt = {
-        "action_request": {"action": tool_call["name"], "args": tool_call["args"]},
+        "action_request": {"action": tool_call_name, "args": tool_call_args},
         "config": {
             "allow_ignore": True,
             "allow_respond": True,
@@ -167,19 +232,22 @@ async def send_email_draft(state: State, config, store):
         subject=state["email"]["subject"],
         to=state["email"].get("to_email", ""),
     )
+    
     if response["type"] == "response":
         msg = {
             "type": "tool",
-            "name": tool_call["name"],
-            "content": f"Error, {user} interrupted and gave this feedback: {response['args']}",
-            "tool_call_id": tool_call["id"],
+            "name": tool_call_name,
+            "content": response["args"],
+            "tool_call_id": tool_call_id,
         }
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"] + [msg])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"] + [msg]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
@@ -191,19 +259,20 @@ async def send_email_draft(state: State, config, store):
                     }
                 ]
                 + state["messages"],
-                "feedback": f"Error, {user} interrupted and gave this feedback: {response['args']}",
+                "feedback": f"{user} responded in this way: {response['args']}",
                 "prompt_types": ["tone", "email", "background", "calendar"],
                 "assistant_key": config["configurable"].get("assistant_id", "default"),
             }
             await LGC.runs.create(None, "multi_reflection_graph", input=rewrite_state)
+    
     elif response["type"] == "ignore":
         msg = {
             "role": "assistant",
             "content": "",
-            "id": state["messages"][-1].id,
+            "id": msg_id,
             "tool_calls": [
                 {
-                    "id": tool_call["id"],
+                    "id": tool_call_id,
                     "name": "Ignore",
                     "args": {"ignore": True},
                 }
@@ -211,29 +280,43 @@ async def send_email_draft(state: State, config, store):
         }
         if memory:
             await save_email(state, config, store, "no")
+    
     elif response["type"] == "edit":
+        # Get the content from the response args
+        corrected = response["args"]["args"].get("content", "")
+        
         msg = {
             "role": "assistant",
-            "content": state["messages"][-1].content,
-            "id": state["messages"][-1].id,
+            "content": corrected,
+            "id": msg_id,
             "tool_calls": [
                 {
-                    "id": tool_call["id"],
-                    "name": tool_call["name"],
+                    "id": tool_call_id,
+                    "name": tool_call_name,
                     "args": response["args"]["args"],
                 }
             ],
         }
+        
         if memory:
-            corrected = response["args"]["args"]["content"]
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"] + [msg])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"] + [msg]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
+            
+            # Extract content from the tool_call safely
+            content_value = ""
+            if isinstance(tool_call, dict) and "args" in tool_call:
+                args = tool_call["args"]
+                if isinstance(args, dict) and "content" in args:
+                    content_value = args["content"]
+            
             rewrite_state = {
                 "messages": [
                     {
@@ -242,7 +325,7 @@ async def send_email_draft(state: State, config, store):
                     },
                     {
                         "role": "assistant",
-                        "content": state["messages"][-1].tool_calls[0]["args"]["content"],
+                        "content": content_value,
                     },
                 ],
                 "feedback": f"A better response would have been: {corrected}",
@@ -250,19 +333,24 @@ async def send_email_draft(state: State, config, store):
                 "assistant_key": config["configurable"].get("assistant_id", "default"),
             }
             await LGC.runs.create(None, "multi_reflection_graph", input=rewrite_state)
+    
     elif response["type"] == "accept":
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
         return None
+    
     else:
         raise ValueError(f"Unexpected response: {response}")
+    
     return {"messages": [msg]}
 
 
@@ -271,6 +359,12 @@ async def notify(state: State, config, store):
     prompt_config = get_config(config)
     memory = prompt_config["memory"]
     user = prompt_config['name']
+    
+    # Check if there are messages and extract the last one safely
+    last_message = None
+    if state["messages"] and len(state["messages"]) > 0:
+        last_message = state["messages"][-1]
+    
     request: HumanInterrupt = {
         "action_request": {"action": "Notify", "args": {}},
         "config": {
@@ -292,10 +386,12 @@ async def notify(state: State, config, store):
         msg = {"type": "user", "content": response["args"]}
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"] + [msg])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"] + [msg]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
@@ -313,6 +409,7 @@ async def notify(state: State, config, store):
             }
             await LGC.runs.create(None, "multi_reflection_graph", input=rewrite_state)
     elif response["type"] == "ignore":
+        # Generate a new ID instead of trying to access it from last_message
         msg = {
             "role": "assistant",
             "content": "",
@@ -338,9 +435,30 @@ async def send_cal_invite(state: State, config, store):
     prompt_config = get_config(config)
     memory = prompt_config["memory"]
     user = prompt_config['name']
-    tool_call = state["messages"][-1].tool_calls[0]
+    
+    # Check if messages[-1] is a dict or an object and access tool_calls accordingly
+    last_message = state["messages"][-1]
+    
+    # Handle both dictionary and object cases
+    if isinstance(last_message, dict):
+        tool_call = last_message.get("tool_calls", [{}])[0]
+        tool_call_id = tool_call.get("id", "")
+        tool_call_name = tool_call.get("name", "")
+        tool_call_args = tool_call.get("args", {})
+        msg_id = last_message.get("id", "")
+        msg_content = last_message.get("content", "")
+    else:
+        # Object-style access
+        tool_calls = getattr(last_message, "tool_calls", [{}])
+        tool_call = tool_calls[0] if tool_calls else {}
+        tool_call_id = tool_call.get("id", "")
+        tool_call_name = tool_call.get("name", "")
+        tool_call_args = tool_call.get("args", {})
+        msg_id = getattr(last_message, "id", "")
+        msg_content = getattr(last_message, "content", "")
+    
     request: HumanInterrupt = {
-        "action_request": {"action": tool_call["name"], "args": tool_call["args"]},
+        "action_request": {"action": tool_call_name, "args": tool_call_args},
         "config": {
             "allow_ignore": True,
             "allow_respond": True,
@@ -359,16 +477,18 @@ async def send_cal_invite(state: State, config, store):
     if response["type"] == "response":
         msg = {
             "type": "tool",
-            "name": tool_call["name"],
+            "name": tool_call_name,
             "content": f"Error, {user} interrupted and gave this feedback: {response['args']}",
-            "tool_call_id": tool_call["id"],
+            "tool_call_id": tool_call_id,
         }
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"] + [msg])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"] + [msg]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
@@ -389,10 +509,10 @@ async def send_cal_invite(state: State, config, store):
         msg = {
             "role": "assistant",
             "content": "",
-            "id": state["messages"][-1].id,
+            "id": msg_id,
             "tool_calls": [
                 {
-                    "id": tool_call["id"],
+                    "id": tool_call_id,
                     "name": "Ignore",
                     "args": {"ignore": True},
                 }
@@ -403,22 +523,24 @@ async def send_cal_invite(state: State, config, store):
     elif response["type"] == "edit":
         msg = {
             "role": "assistant",
-            "content": state["messages"][-1].content,
-            "id": state["messages"][-1].id,
+            "content": msg_content,
+            "id": msg_id,
             "tool_calls": [
                 {
-                    "id": tool_call["id"],
-                    "name": tool_call["name"],
+                    "id": tool_call_id,
+                    "name": tool_call_name,
                     "args": response["args"]["args"],
                 }
             ],
         }
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"] + [msg])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"] + [msg]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )
@@ -438,10 +560,12 @@ async def send_cal_invite(state: State, config, store):
     elif response["type"] == "accept":
         if memory:
             await save_email(state, config, store, "email")
+            # Safely prepare messages for conversion
+            safe_messages = _safely_prepare_messages_for_conversion(state["messages"])
             # Process email for memory extraction
             await process_email_for_memory(
                 state["email"],
-                convert_to_langchain_messages(state["messages"]),
+                convert_to_langchain_messages(safe_messages),
                 config,
                 store
             )

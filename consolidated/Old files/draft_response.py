@@ -15,6 +15,7 @@ from eaia.schemas import (
     email_template,
 )
 from eaia.main.config import get_config
+from eaia.main.tools import tools
 
 EMAIL_WRITING_INSTRUCTIONS = """You are {full_name}'s executive assistant. You are a top-notch executive assistant who cares about {name} performing as well as possible.
 
@@ -70,24 +71,32 @@ Note that you should only call this if working to schedule a meeting - if a meet
 # Background information: information you may find helpful when responding to emails or deciding what to do.
 
 {random_preferences}"""
-draft_prompt = """{instructions}
 
-Remember to call a tool correctly! Use the specified names exactly - not add `functions::` to the start. Pass all required arguments.
+draft_response_prompt = """You are {full_name}'s executive assistant. You are a top-notch executive assistant who cares about {name} performing as well as possible.
 
-Here is the email thread. Note that this is the full email thread. Pay special attention to the most recent email.
+{background}
 
-{email}"""
+{name} asked you to help handle an email. Draft a response to the below email. Here are some notes about your response:
+
+{response_preferences}
+
+{schedule_preferences}
+
+{fewshotexamples}
+
+Use the information to help draft a response to the below email:
+
+{email_template}"""
 
 
 async def draft_response(state: State, config: RunnableConfig, store: BaseStore):
     """Write an email to a customer."""
-    model = config["configurable"].get("model", "gpt-4o")
-    llm = ChatOpenAI(
-        model=model,
-        temperature=0,
-        parallel_tool_calls=False,
-        tool_choice="required",
-    )
+    # Default to gpt-4o if model is not specified or is None
+    model_name = config.get("configurable", {}).get("model")
+    if not model_name:
+        model_name = "gpt-4o"
+        
+    llm = ChatOpenAI(model=model_name, temperature=0)
     tools = [
         NewEmailDraft,
         ResponseEmailDraft,
@@ -131,14 +140,19 @@ async def draft_response(state: State, config: RunnableConfig, store: BaseStore)
         full_name=prompt_config["full_name"],
         background=prompt_config["background"],
     )
-    input_message = draft_prompt.format(
-        instructions=_prompt,
-        email=email_template.format(
+    input_message = draft_response_prompt.format(
+        email_template=email_template.format(
             email_thread=state["email"]["page_content"],
             author=state["email"]["from_email"],
             subject=state["email"]["subject"],
             to=state["email"].get("to_email", ""),
         ),
+        name=prompt_config["name"],
+        full_name=prompt_config["full_name"],
+        background=prompt_config["background_preferences"],
+        response_preferences=prompt_config["response_preferences"],
+        schedule_preferences=prompt_config["schedule_preferences"],
+        fewshotexamples="",
     )
 
     model = llm.bind_tools(tools)

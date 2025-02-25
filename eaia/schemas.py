@@ -1,7 +1,7 @@
 """Schema definitions for the Executive AI Assistant."""
 
 from typing import Dict, List, Any, TypedDict, Optional, Union, Literal
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from langgraph.graph.message import AnyMessage
 from typing_extensions import TypedDict
 

@@ -44,8 +44,12 @@ Subject: {subject}
 
 
 async def triage_input(state: State, config: RunnableConfig, store: BaseStore):
-    model = config["configurable"].get("model", "gpt-4o")
-    llm = ChatOpenAI(model=model, temperature=0)
+    # Default to gpt-4o if model is not specified or is None
+    model_name = config.get("configurable", {}).get("model")
+    if not model_name:
+        model_name = "gpt-4o"
+        
+    llm = ChatOpenAI(model=model_name, temperature=0)
     examples = await get_few_shot_examples(state["email"], store, config)
     prompt_config = get_config(config)
     input_message = triage_prompt.format(
@@ -65,8 +69,10 @@ async def triage_input(state: State, config: RunnableConfig, store: BaseStore):
         tool_choice={"type": "function", "function": {"name": "RespondTo"}}
     )
     response = await model.ainvoke(input_message)
-    if len(state["messages"]) > 0:
+    
+    # Check if 'messages' key exists in state before accessing it
+    if "messages" in state and state["messages"]:
         delete_messages = [RemoveMessage(id=m.id) for m in state["messages"]]
         return {"triage": response, "messages": delete_messages}
     else:
-        return {"triage": response}
+        return {"triage": response, "messages": []}  # Initialize with empty messages list

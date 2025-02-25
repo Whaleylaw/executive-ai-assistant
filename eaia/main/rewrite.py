@@ -31,8 +31,12 @@ Subject: {subject}
 
 
 async def rewrite(state: State, config, store):
-    model = config["configurable"].get("model", "gpt-4o")
-    llm = ChatOpenAI(model=model, temperature=0)
+    # Default to gpt-4o if model is not specified or is None
+    model_name = config.get("configurable", {}).get("model")
+    if not model_name:
+        model_name = "gpt-4o"
+        
+    llm = ChatOpenAI(model=model_name, temperature=0)
     prev_message = state["messages"][-1]
     draft = prev_message.tool_calls[0]["args"]["content"]
     namespace = (config["configurable"].get("assistant_id", "default"),)
